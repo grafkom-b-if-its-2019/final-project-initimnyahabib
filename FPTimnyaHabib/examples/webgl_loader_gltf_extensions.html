@@ -20,53 +20,32 @@
 
 			import * as THREE from '../build/three.module.js';
 
+			import { FirstPersonControls } from './jsm/controls/FirstPersonControls.js';
 			import { GUI } from './jsm/libs/dat.gui.module.js';
 			import { OrbitControls } from './jsm/controls/OrbitControls.js';
 			import { GLTFLoader } from './jsm/loaders/GLTFLoader.js';
 			import { DDSLoader } from './jsm/loaders/DDSLoader.js';
 			import { DRACOLoader } from './jsm/loaders/DRACOLoader.js';
 			import { RGBELoader } from './jsm/loaders/RGBELoader.js';
-			import { EquirectangularToCubeGenerator } from './jsm/loaders/EquirectangularToCubeGenerator.js';
 			import { PMREMGenerator } from './jsm/pmrem/PMREMGenerator.js';
-			import { PMREMCubeUVPacker } from './jsm/pmrem/PMREMCubeUVPacker.js';
 
 			var orbitControls;
-			var container, camera, scene, renderer, loader;
+			var container, camera, scene, renderer, loader, control;
 			var gltf, background, envMap, mixer, gui, extensionControls;
 
 			var clock = new THREE.Clock();
-
+	
 			var scenes = {
-				Boombox: {
-					name: 'BoomBox (PBR)',
-					url: './models/ChairAnimated/ChairAnimated.gltf',
-					author: 'Microsoft',
-					authorURL: 'https://www.microsoft.com/',
-					cameraPos: new THREE.Vector3( 0.02, 5.01, 5.03 ),
-					objectRotation: new THREE.Euler( 0, Math.PI, 0 ),
-					animationTime: 5,
-					shadows: true,
-					extensions: [ 'glTF'],
-					addEnvMap: true
-				},
-				'Cesium Man': {
-					name: 'Cesium Man',
-					url: './models/gltf/CesiumMan/%s/CesiumMan.gltf',
-					author: 'Cesium',
-					authorURL: 'https://cesiumjs.org/',
-					cameraPos: new THREE.Vector3( 0, 3, 10 ),
-					objectRotation: new THREE.Euler( 0, 0, 0 ),
+					name: 'Chair',
+					url: './models/plasno/Plasno.gltf',
+					author: 'Tim Habib',
+					authorURL: '',
+					cameraPos: new THREE.Vector3( 15, 5, 25 ),
+					center: new THREE.Vector3( 0, 1.2, 0 ),
 					addLights: true,
-					addGround: true,
-					shadows: true,
-					extensions: [ 'glTF', 'glTF-Embedded', 'glTF-Binary', 'glTF-Draco' ]
-				},
-			};
-
-			var state = {
-				scene: Object.keys( scenes )[ 0 ],
-				extension: scenes[ Object.keys( scenes )[ 0 ] ].extensions[ 0 ],
-				playAnimation: true
+					addGround: false,
+					shadows: false,
+					extensions: [ 'glTF' ]
 			};
 
 			function onload() {
@@ -76,43 +55,14 @@
 				renderer = new THREE.WebGLRenderer( { antialias: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
-				renderer.gammaOutput = true;
+				renderer.outputEncoding = THREE.sRGBEncoding;
 				renderer.physicallyCorrectLights = true;
 				container.appendChild( renderer.domElement );
 
 				window.addEventListener( 'resize', onWindowResize, false );
 
-				// Load background and generate envMap
-
-				new RGBELoader()
-					.setDataType( THREE.UnsignedByteType )
-					.setPath( 'textures/equirectangular/' )
-					.load( 'venice_sunset_2k.hdr', function ( texture ) {
-
-						var cubeGenerator = new EquirectangularToCubeGenerator( texture, { resolution: 1024 } );
-						cubeGenerator.update( renderer );
-
-						background = cubeGenerator.renderTarget;
-
-						var pmremGenerator = new PMREMGenerator( cubeGenerator.renderTarget.texture );
-						pmremGenerator.update( renderer );
-
-						var pmremCubeUVPacker = new PMREMCubeUVPacker( pmremGenerator.cubeLods );
-						pmremCubeUVPacker.update( renderer );
-
-						envMap = pmremCubeUVPacker.CubeUVRenderTarget.texture;
-
-						pmremGenerator.dispose();
-						pmremCubeUVPacker.dispose();
-
-						//
-
-						buildGUI();
-						initScene( scenes[ state.scene ] );
-						animate();
-
-					} );
-
+				initScene( scenes );
+				animate();
 			}
 
 			function initScene( sceneInfo ) {
@@ -127,19 +77,38 @@
 
 				scene = new THREE.Scene();
 				scene.background = new THREE.Color( 0x222222 );
+				var axesHelper = new THREE.AxesHelper( 50 );
+				scene.add( axesHelper );
 
-				camera = new THREE.PerspectiveCamera( 45, container.offsetWidth / container.offsetHeight, 0.001, 1000 );
+				camera = new THREE.PerspectiveCamera( 90, container.offsetWidth / container.offsetHeight, 0.001, 1000 );
+				var reticle = new THREE.Mesh(
+				new THREE.RingBufferGeometry(0.005, 0.01, 15),
+				new THREE.MeshBasicMaterial({ color: 0xffffff })
+				);
+				reticle.position.z = -0.5;
+				camera.add(reticle);
 				scene.add( camera );
+
+				control = new FirstPersonControls(camera);
+				control.lookSpeed = 0.4;
+				control.movementSpeed = 20;
+				control.noFly = true;
+				control.lookVertical = true;
+				control.constrainVertical = true;
+				control.verticalMin = 1.0;
+				control.verticalMax = 2.0;
+				control.lon = -150;
+				control.lat = 120;
 
 				var spot1;
 
 				if ( sceneInfo.addLights ) {
 
-					var ambient = new THREE.AmbientLight( 0x222222 );
+					var ambient = new THREE.AmbientLight( 0xFFFFFF );
 					scene.add( ambient );
 
 					var directionalLight = new THREE.DirectionalLight( 0xdddddd, 4 );
-					directionalLight.position.set( 0, 0, 1 ).normalize();
+					directionalLight.position.set( 0, 1, 1 ).normalize();
 					scene.add( directionalLight );
 
 					spot1 = new THREE.SpotLight( 0xffffff, 1 );
@@ -158,7 +127,7 @@
 
 					}
 
-					scene.add( spot1 );
+					// scene.add( spot1 );
 
 				}
 
@@ -198,18 +167,12 @@
 				loader = new GLTFLoader();
 
 				var dracoLoader = new DRACOLoader();
-				dracoLoader.setDecoderPath( './draco/gltf/' );
+				dracoLoader.setDecoderPath( 'js/libs/draco/gltf/' );
 				loader.setDRACOLoader( dracoLoader );
 
 				loader.setDDSLoader( new DDSLoader() );
 
-				var url = sceneInfo.url.replace( /%s/g, state.extension );
-
-				if ( state.extension === 'glTF-Binary' ) {
-
-					url = url.replace( '.gltf', '.glb' );
-
-				}
+				var url = sceneInfo.url;
 
 				var loadStartTime = performance.now();
 
@@ -254,24 +217,6 @@
 					if ( sceneInfo.objectScale ) {
 
 						object.scale.copy( sceneInfo.objectScale );
-
-					}
-
-					if ( sceneInfo.addEnvMap ) {
-
-						object.traverse( function ( node ) {
-
-							if ( node.material && ( node.material.isMeshStandardMaterial ||
-								 ( node.material.isShaderMaterial && node.material.envMap !== undefined ) ) ) {
-
-								node.material.envMap = envMap;
-								node.material.envMapIntensity = 1.5; // boombox seems too dark otherwise
-
-							}
-
-						} );
-
-						scene.background = background;
 
 					}
 
@@ -330,10 +275,9 @@
 			function animate() {
 
 				requestAnimationFrame( animate );
+				// if ( mixer ) mixer.update( clock.getDelta() );
 
-				if ( mixer ) mixer.update( clock.getDelta() );
-
-				orbitControls.update();
+				control.update(clock.getDelta());
 
 				render();
 
@@ -342,60 +286,6 @@
 			function render() {
 
 				renderer.render( scene, camera );
-
-			}
-
-			function buildGUI() {
-
-				gui = new GUI( { width: 330 } );
-				gui.domElement.parentElement.style.zIndex = 101;
-
-				var sceneCtrl = gui.add( state, 'scene', Object.keys( scenes ) );
-				sceneCtrl.onChange( reload );
-
-				var animCtrl = gui.add( state, 'playAnimation' );
-				animCtrl.onChange( toggleAnimations );
-
-				updateGUI();
-
-			}
-
-			function updateGUI() {
-
-				if ( extensionControls ) extensionControls.remove();
-
-				var sceneInfo = scenes[ state.scene ];
-
-				if ( sceneInfo.extensions.indexOf( state.extension ) === - 1 ) {
-
-					state.extension = sceneInfo.extensions[ 0 ];
-
-				}
-
-				extensionControls = gui.add( state, 'extension', sceneInfo.extensions );
-				extensionControls.onChange( reload );
-
-			}
-
-			function toggleAnimations() {
-
-				for ( var i = 0; i < gltf.animations.length; i ++ ) {
-
-					var clip = gltf.animations[ i ];
-					var action = mixer.existingAction( clip );
-
-					state.playAnimation ? action.play() : action.stop();
-
-				}
-
-			}
-
-			function reload() {
-
-				if ( loader && mixer ) mixer.stopAllAction();
-
-				updateGUI();
-				initScene( scenes[ state.scene ] );
 
 			}
 
