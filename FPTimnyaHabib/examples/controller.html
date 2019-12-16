@@ -7,9 +7,11 @@
     <title>Document</title>
 </head>
 <body>
-    <button>
-        A
-    </button>
+    <button onclick="movement('W')">W</button>
+    <button onclick="movement('A')">A</button>
+    <button onclick="movement('S')">S</button>
+    <button onclick="movement('D')">D</button>
+    <button onclick="movement('stop')">stop</button>
 </body>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
@@ -17,14 +19,16 @@
 <script>
     var controls;
     var channel;
-    $(document).ready(function(){
-        controls = io.connect("/start_controller");
+        controls = io.connect("http://10.151.254.124:8080/start_controller");
         controls.on("connect", function(){
             controls.emit("register", function(data) {
                 channel = data;
             })
         })
-        controls.emit('move', { message: "movement"})
-    })
+
+        function movement(move){
+            controls.emit('move', { message: move})
+        }
 </script>
+
 </html>

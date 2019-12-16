@@ -71,20 +71,8 @@
         <script type ="text/javascript"src="js/loaders/EquirectangularToCubeGenerator.js"></script>
         <script type ="text/javascript"src="js/pmrem/PMREMGenerator.js"></script>
         <script type ="text/javascript"src="js/pmrem/PMREMCubeUVPacker.js"></script>
-        <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script> -->
-
-        <script>
-            // var channel,controls;
-            // $(document).ready(function(){
-            //     controls = io.connect("http://localhost/start_controller");
-            //     controls.on("connect", function(){
-            //         controls.emit("register", function(data) {
-            //             channel = data;
-            //         })
-            //     })
-            // })
-        </script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 
         <div id="blocker">
 
@@ -659,13 +647,55 @@
             });
 
             
-            // controls.on("movement", function (data) {
-            //     if (data.channel == channel) {
-            //         console.log(data.message);
-            //     }
-            // });
+            var channel,controls;
+                controls = io.connect("http://10.151.254.124:8080/start_controller");
+                controls.on("connect", function(){
+                    controls.emit("register", function(data) {
+                        channel = data;
+                        console.log('channel receive')
+                    })
+                })
+                
+                controls.on("movement", function (data) {
+                    if (data.channel == channel) {
+                        console.log('Movement receive')
+                        console.log(data.message);
+                        switch (data.message) {
+                            case 'W':
+                            var evt = new KeyboardEvent('keydown', {'keyCode':87, 'which':87})
+                            document.dispatchEvent(evt)
+                            // camera.translateZ( -0.5 );
+                                break;
+                            case 'A':
+                            var evt = new KeyboardEvent('keydown', {'keyCode':65, 'which':65})
+                            document.dispatchEvent(evt)
+                            // camera.translateX( -0.5 );
+                                break;
+                            case 'S':
+                            var evt = new KeyboardEvent('keydown', {'keyCode':83, 'which':83})
+                            document.dispatchEvent(evt)
+                            // camera.translateZ( 0.5 );
+                                break;
+                            case 'D':
+                            var evt = new KeyboardEvent('keydown', {'keyCode':68, 'which':68})
+                            document.dispatchEvent(evt)
+                            // camera.translateX( 0.5 );
+                                break;
+                            case 'stop':
+                            var evt = new KeyboardEvent('keyup', {'keyCode':87, 'which':87})
+                            document.dispatchEvent(evt)
+                            var evt = new KeyboardEvent('keyup', {'keyCode':65, 'which':65})
+                            document.dispatchEvent(evt)
+                            var evt = new KeyboardEvent('keyup', {'keyCode':83, 'which':83})
+                            document.dispatchEvent(evt)
+                            var evt = new KeyboardEvent('keyup', {'keyCode':68, 'which':68})
+                            document.dispatchEvent(evt)
+                                break;
 
-            
+                        }
+                    }
+                });
+
         </script>
     </body>
 </html>
