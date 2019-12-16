@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <button onclick="movement('W')">W</button>
+    <button onclick="movement('A')">A</button>
+    <button onclick="movement('S')">S</button>
+    <button onclick="movement('D')">D</button>
+    <button onclick="movement('stop')">stop</button>
+</body>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+<script>
+    var controls;
+    var channel;
+        controls = io.connect("http://10.151.254.124:8080/start_controller");
+        controls.on("connect", function(){
+            controls.emit("register", function(data) {
+                channel = data;
+            })
+        })
+
+        function movement(move){
+            controls.emit('move', { message: move})
+        }
+</script>
+
+</html>

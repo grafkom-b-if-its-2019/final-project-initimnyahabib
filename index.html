@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Explore TC</title>
+        <style>
+            html, body {
+                width: 100%;
+                height: 100%;
+            }
+
+            body {
+                background-color: #ffffff;
+                margin: 0;
+                overflow: hidden;
+                font-family: arial;
+            }
+
+            #blocker {
+
+                position: absolute;
+
+                width: 100%;
+                height: 100%;
+
+                background-color: rgba(0,0,0,0.5);
+
+            }
+
+            #instructions {
+
+                width: 100%;
+                height: 100%;
+
+                display: -webkit-box;
+                display: -moz-box;
+                display: box;
+
+                -webkit-box-orient: horizontal;
+                -moz-box-orient: horizontal;
+                box-orient: horizontal;
+
+                -webkit-box-pack: center;
+                -moz-box-pack: center;
+                box-pack: center;
+
+                -webkit-box-align: center;
+                -moz-box-align: center;
+                box-align: center;
+
+                color: #ffffff;
+                text-align: center;
+
+                cursor: pointer;
+
+            }
+
+        </style>
+    </head>
+    <body>
+        <script src="../libs/Three.js"></script>
+        <script src="../build/cannon.js"></script>
+        <script src="js/PointerLockControls.js"></script>
+        <script type ="text/javascript"src="../build/three.js"></script>
+        <script type ="text/javascript"src="../build/three.min.js"></script>
+        <script type ="text/javascript"src="js/controls/OrbitControls.js"></script>
+        <script type ="text/javascript"src="js/loaders/GLTFLoader.js"></script>
+        <script type ="text/javascript"src="js/loaders/DDSLoader.js"></script>
+        <script type ="text/javascript"src="js/loaders/DRACOLoader.js"></script>
+        <script type ="text/javascript"src="js/loaders/RGBELoader.js"></script>
+        <script type ="text/javascript"src="js/loaders/EquirectangularToCubeGenerator.js"></script>
+        <script type ="text/javascript"src="js/pmrem/PMREMGenerator.js"></script>
+        <script type ="text/javascript"src="js/pmrem/PMREMCubeUVPacker.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+        
+        <!-- <audio src="./sound/22 Life is Beautiful.mp3" id="my_audio" loop="loop" autoplay="autoplay"> -->
+        <div id="blocker">
+
+            <div id="instructions">
+                <span style="font-size:40px">XPlore Plasno</span>
+                <br />
+                
+                (W,A,S,D = Move, SPACE = Jump, MOUSE = Look)
+            </div>
+
+        </div>
+
+        <script>
+
+            // import * as THREE from '../build/three.module.js';
+
+            // import { FirstPersonControls } from './jsm/controls/FirstPersonControls.js';
+            // import { GUI } from './jsm/libs/dat.gui.module.js';
+            // import { OrbitControls } from './jsm/controls/OrbitControls.js';
+            // import { GLTFLoader } from './jsm/loaders/GLTFLoader.js';
+            // import { DDSLoader } from './jsm/loaders/DDSLoader.js';
+            // import { DRACOLoader } from './jsm/loaders/DRACOLoader.js';
+            // import { RGBELoader } from './jsm/loaders/RGBELoader.js';
+
+            var orbitControls;
+			var container, camera, scene, renderer, loader, control;
+			var gltf, background, envMap, mixer, gui, extensionControls;
+
+			var clock = new THREE.Clock();
+
+            var scenes = {
+                Plasno:{
+					name: 'Chair',
+					url: './models/plasno/Plasno.gltf',
+					author: 'Tim Habib',
+					authorURL: '',
+					cameraPos: new THREE.Vector3( 15, 5, 25 ),
+					center: new THREE.Vector3( 0, 1.2, 0 ),
+					addLights: true,
+					addGround: false,
+					shadows: false,
+                    extensions: [ 'glTF' ],
+                    addEnvMap: true,
+					animationTime: 5
+                },
+			};
+            
+            var sphereShape, sphereBody, world, physicsMaterial, walls=[], balls=[], ballMeshes=[], boxes=[], boxMeshes=[];
+            var geometry, material, mesh;
+            var controls,time = Date.now();
+
+            var blocker = document.getElementById( 'blocker' );
+            var instructions = document.getElementById( 'instructions' );
+
+            var havePointerLock = 'pointerLockElement' in document || 'mozPointerLockElement' in document || 'webkitPointerLockElement' in document;
+
+            if ( havePointerLock ) {
+
+                var element = document.body;
+
+                var pointerlockchange = function ( event ) {
+
+                    if ( document.pointerLockElement === element || document.mozPointerLockElement === element || document.webkitPointerLockElement === element ) {
+
+                        controls.enabled = true;
+
+                        blocker.style.display = 'none';
+
+                        var audio = new Audio('./sound/22 Life is Beautiful.mp3')
+                        audio.play()
+                        
+
+                    } else {
+
+                        controls.enabled = false;
+
+                        blocker.style.display = '-webkit-box';
+                        blocker.style.display = '-moz-box';
+                        blocker.style.display = 'box';
+
+                        instructions.style.display = '';
+
+                    }
+
+                }
+
+                var pointerlockerror = function ( event ) {
+                    instructions.style.display = '';
+                }
+
+                // Hook pointer lock state change events
+                document.addEventListener( 'pointerlockchange', pointerlockchange, false );
+                document.addEventListener( 'mozpointerlockchange', pointerlockchange, false );
+                document.addEventListener( 'webkitpointerlockchange', pointerlockchange, false );
+
+                document.addEventListener( 'pointerlockerror', pointerlockerror, false );
+                document.addEventListener( 'mozpointerlockerror', pointerlockerror, false );
+                document.addEventListener( 'webkitpointerlockerror', pointerlockerror, false );
+
+                instructions.addEventListener( 'click', function ( event ) {
+                    instructions.style.display = 'none';
+
+                    // Ask the browser to lock the pointer
+                    element.requestPointerLock = element.requestPointerLock || element.mozRequestPointerLock || element.webkitRequestPointerLock;
+
+                    if ( /Firefox/i.test( navigator.userAgent ) ) {
+
+                        var fullscreenchange = function ( event ) {
+
+                            if ( document.fullscreenElement === element || document.mozFullscreenElement === element || document.mozFullScreenElement === element ) {
+
+                                document.removeEventListener( 'fullscreenchange', fullscreenchange );
+                                document.removeEventListener( 'mozfullscreenchange', fullscreenchange );
+
+                                element.requestPointerLock();
+                            }
+
+                        }
+
+                        document.addEventListener( 'fullscreenchange', fullscreenchange, false );
+                        document.addEventListener( 'mozfullscreenchange', fullscreenchange, false );
+
+                        element.requestFullscreen = element.requestFullscreen || element.mozRequestFullscreen || element.mozRequestFullScreen || element.webkitRequestFullscreen;
+
+                        element.requestFullscreen();
+
+                    } else {
+
+                        element.requestPointerLock();
+
+                    }
+
+                }, false );
+
+            } else {
+
+                instructions.innerHTML = 'Your browser doesn\'t seem to support Pointer Lock API';
+
+            }
+
+            initCannon();
+            onload();
+            // init(scenes);
+            // animate();
+
+            var state = {
+				scene: Object.keys( scenes )[ 0 ],
+				extension: scenes[ Object.keys( scenes )[ 0 ] ].extensions[ 0 ],
+				playAnimation: true
+			};
+
+            function onload() {
+
+                console.log("alo");
+
+                container = document.getElementById( 'container' );
+
+                renderer = new THREE.WebGLRenderer( { antialias: true } );
+                renderer.setPixelRatio( window.devicePixelRatio );
+                renderer.setSize( window.innerWidth, window.innerHeight );
+                renderer.gammaOutput = true;
+                renderer.physicallyCorrectLights = true;
+                //container.appendChild( renderer.domElement );
+
+                window.addEventListener( 'resize', onWindowResize, false );
+
+                // Load background and generate envMap
+
+                new THREE.RGBELoader()
+                    .setDataType( THREE.UnsignedByteType )
+                    .setPath( 'textures/equirectangular/' )
+                    .load( 'venice_sunset_2k.hdr', function ( texture ) {
+
+                        var cubeGenerator = new THREE.EquirectangularToCubeGenerator( texture, { resolution: 1024 } );
+                        cubeGenerator.update( renderer );
+
+                        background = cubeGenerator.renderTarget;
+
+                        var pmremGenerator = new THREE.PMREMGenerator( cubeGenerator.renderTarget.texture );
+                        pmremGenerator.update( renderer );
+
+                        var pmremCubeUVPacker = new THREE.PMREMCubeUVPacker( pmremGenerator.cubeLods );
+                        pmremCubeUVPacker.update( renderer );
+
+                        envMap = pmremCubeUVPacker.CubeUVRenderTarget.texture;
+
+                        pmremGenerator.dispose();
+                        pmremCubeUVPacker.dispose();
+
+                        //
+
+                        // buildGUI();
+                        init( scenes[ state.scene ] );
+                        animate();
+
+                    } );
+
+            }
+
+            function initCannon(){
+
+                
+                // Setup our world
+                world = new CANNON.World();
+                world.quatNormalizeSkip = 0;
+                world.quatNormalizeFast = false;
+
+                var solver = new CANNON.GSSolver();
+
+                world.defaultContactMaterial.contactEquationStiffness = 1e9;
+                world.defaultContactMaterial.contactEquationRelaxation = 4;
+
+                solver.iterations = 7;
+                solver.tolerance = 0.1;
+                var split = true;
+                if(split)
+                    world.solver = new CANNON.SplitSolver(solver);
+                else
+                    world.solver = solver;
+
+                world.gravity.set(0,-20,0);
+                world.broadphase = new CANNON.NaiveBroadphase();
+
+                // Create a slippery material (friction coefficient = 0.0)
+                physicsMaterial = new CANNON.Material("slipperyMaterial");
+                var physicsContactMaterial = new CANNON.ContactMaterial(physicsMaterial,
+                                                                        physicsMaterial,
+                                                                        0.0, // friction coefficient
+                                                                        0.5  // restitution
+                                                                        );
+                // We must add the contact materials to the world
+                world.addContactMaterial(physicsContactMaterial);
+
+                // Create a sphere
+                var mass = 5, radius = 5.3;
+                sphereShape = new CANNON.Sphere(radius);
+                sphereBody = new CANNON.Body({ mass: mass });
+                sphereBody.addShape(sphereShape);
+                sphereBody.position.set(0,5,0);
+                sphereBody.linearDamping = 0.9;
+                world.addBody(sphereBody);
+
+                // Create a plane
+                var groundShape = new CANNON.Plane();
+                var groundBody = new CANNON.Body({ mass: 0 });
+                groundBody.addShape(groundShape);
+                groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1,0,0),-Math.PI/2);
+                world.addBody(groundBody);
+            }
+
+            function init(sceneInfo) {
+
+                var descriptionEl = document.getElementById( 'description' );
+
+				if ( sceneInfo.author && sceneInfo.authorURL ) {
+
+					descriptionEl.innerHTML = sceneInfo.name + ' by <a href="' + sceneInfo.authorURL + '" target="_blank" rel="noopener">' + sceneInfo.author + '</a>';
+
+				}
+
+                camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 1000 );
+
+                scene = new THREE.Scene();
+                scene.fog = new THREE.Fog( 0x000000, 0, 500 );
+
+                var ambient = new THREE.AmbientLight( 0x111111 );
+                scene.add( ambient );
+
+                var spot1;
+
+                if ( sceneInfo.addLights ) {
+
+                    var ambient = new THREE.AmbientLight( 0xFFFFFF );
+                    scene.add( ambient );
+
+                    var directionalLight = new THREE.DirectionalLight( 0xdddddd, 4 );
+                    directionalLight.position.set( 0, 1, 1 ).normalize();
+                    scene.add( directionalLight );
+
+                    spot1 = new THREE.SpotLight( 0xffffff, 1 );
+                    spot1.position.set( 5, 10, 5 );
+                    spot1.angle = 0.50;
+                    spot1.penumbra = 0.75;
+                    spot1.intensity = 100;
+                    spot1.decay = 2;
+
+                    if ( sceneInfo.shadows ) {
+
+                        spot1.castShadow = true;
+                        spot1.shadow.bias = 0.0001;
+                        spot1.shadow.mapSize.width = 2048;
+                        spot1.shadow.mapSize.height = 2048;
+
+                    }
+
+                    // scene.add( spot1 );
+
+                }
+
+                if ( sceneInfo.shadows ) {
+
+                    renderer.shadowMap.enabled = true;
+                    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+                }
+
+                loader = new THREE.GLTFLoader();
+
+				var dracoLoader = new THREE.DRACOLoader();
+				dracoLoader.setDecoderPath( 'js/libs/draco/gltf/' );
+				loader.setDRACOLoader( dracoLoader );
+
+				loader.setDDSLoader( new THREE.DDSLoader() );
+
+				var url = sceneInfo.url;
+
+				var loadStartTime = performance.now();
+
+				loader.load( url, function ( data ) {
+
+					gltf = data;
+
+					var object = gltf.scene;
+
+					console.info( 'Load time: ' + ( performance.now() - loadStartTime ).toFixed( 2 ) + ' ms.' );
+
+					if ( sceneInfo.cameraPos ) {
+
+						// camera.position.copy( sceneInfo.cameraPos );
+
+					}
+
+					if ( sceneInfo.center ) {
+
+						// orbitControls.target.copy( sceneInfo.center );
+
+					}
+
+					if ( sceneInfo.objectPosition ) {
+
+						object.position.copy( sceneInfo.objectPosition );
+
+						if ( spot1 ) {
+
+							spot1.target.position.copy( sceneInfo.objectPosition );
+
+						}
+
+					}
+
+					if ( sceneInfo.objectRotation ) {
+
+						object.rotation.copy( sceneInfo.objectRotation );
+
+					}
+
+					if ( sceneInfo.objectScale ) {
+
+						object.scale.copy( sceneInfo.objectScale );
+
+                    }
+                    
+                    if ( sceneInfo.addEnvMap ) {
+
+                        object.traverse( function ( node ) {
+
+                            if ( node.material && ( node.material.isMeshStandardMaterial ||
+                                ( node.material.isShaderMaterial && node.material.envMap !== undefined ) ) ) {
+
+                                node.material.envMap = envMap;
+                                node.material.envMapIntensity = 1.5; // boombox seems too dark otherwise
+
+                            }
+
+                        } );
+
+                        scene.background = background;
+
+                    }
+
+					object.traverse( function ( node ) {
+
+						if ( node.isMesh || node.isLight ) node.castShadow = true;
+
+					} );
+
+					var animations = gltf.animations;
+
+					if ( animations && animations.length ) {
+
+						mixer = new THREE.AnimationMixer( object );
+
+						for ( var i = 0; i < animations.length; i ++ ) {
+
+							var animation = animations[ i ];
+
+							// There's .3333 seconds junk at the tail of the Monster animation that
+							// keeps it from looping cleanly. Clip it at 3 seconds
+							if ( sceneInfo.animationTime ) {
+
+								animation.duration = sceneInfo.animationTime;
+
+							}
+
+							var action = mixer.clipAction( animation );
+
+							if ( state.playAnimation ) action.play();
+
+						}
+
+					}
+
+					scene.add( object );
+					onWindowResize();
+
+				}, undefined, function ( error ) {
+
+					console.error( error );
+
+				} );
+
+
+
+
+                controls = new PointerLockControls( camera , sphereBody );
+                scene.add( controls.getObject() );
+
+                renderer = new THREE.WebGLRenderer();
+                renderer.shadowMapEnabled = true;
+                renderer.shadowMapSoft = true;
+                renderer.setSize( window.innerWidth, window.innerHeight );
+                renderer.setClearColor( scene.fog.color, 1 );
+
+                document.body.appendChild( renderer.domElement );
+
+                window.addEventListener( 'resize', onWindowResize, false );
+
+            }
+
+            function onWindowResize() {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize( window.innerWidth, window.innerHeight );
+            }
+
+            var dt = 1/60;
+            function animate() {
+                requestAnimationFrame( animate );
+                if(controls.enabled){
+                    world.step(dt);
+
+                    // Update ball positions
+                    for(var i=0; i<balls.length; i++){
+                        ballMeshes[i].position.copy(balls[i].position);
+                        ballMeshes[i].quaternion.copy(balls[i].quaternion);
+                    }
+
+                    // Update box positions
+                    for(var i=0; i<boxes.length; i++){
+                        boxMeshes[i].position.copy(boxes[i].position);
+                        boxMeshes[i].quaternion.copy(boxes[i].quaternion);
+                    }
+                }
+
+                controls.update( Date.now() - time );
+                renderer.render( scene, camera );
+                time = Date.now();
+
+            }
+
+            var ballShape = new CANNON.Sphere(0.2);
+            var ballGeometry = new THREE.SphereGeometry(ballShape.radius, 32, 32);
+            var shootDirection = new THREE.Vector3();
+            var shootVelo = 15;
+            var raycaster = new THREE.Raycaster();
+            function getShootDir(targetVec){
+                var vector = targetVec;
+                targetVec.set(0,0,1);
+                raycaster.setFromCamera( mouse, camera );
+                var ray = new THREE.Ray(sphereBody.position, vector.sub(sphereBody.position).normalize() );
+                targetVec.copy(ray.direction);
+            }
+
+            window.addEventListener("click",function(e){
+                if(controls.enabled==true){
+                    var x = sphereBody.position.x;
+                    var y = sphereBody.position.y;
+                    var z = sphereBody.position.z;
+                    var ballBody = new CANNON.Body({ mass: 1 });
+                    ballBody.addShape(ballShape);
+                    var ballMesh = new THREE.Mesh( ballGeometry, material );
+                    world.addBody(ballBody);
+                    scene.add(ballMesh);
+                    ballMesh.castShadow = true;
+                    ballMesh.receiveShadow = true;
+                    balls.push(ballBody);
+                    ballMeshes.push(ballMesh);
+                    getShootDir(shootDirection);
+                    ballBody.velocity.set(  shootDirection.x * shootVelo,
+                                            shootDirection.y * shootVelo,
+                                            shootDirection.z * shootVelo);
+
+                    // Move the ball outside the player sphere
+                    x += shootDirection.x * (sphereShape.radius*1.02 + ballShape.radius);
+                    y += shootDirection.y * (sphereShape.radius*1.02 + ballShape.radius);
+                    z += shootDirection.z * (sphereShape.radius*1.02 + ballShape.radius);
+                    ballBody.position.set(x,y,z);
+                    ballMesh.position.set(x,y,z);
+                }
+            });
+
+            
+            var channel,controls;
+                controls = io.connect("http://10.151.254.124:8080/start_controller");
+                controls.on("connect", function(){
+                    controls.emit("register", function(data) {
+                        channel = data;
+                        console.log('channel receive')
+                    })
+                })
+                
+                controls.on("movement", function (data) {
+                    if (data.channel == channel) {
+                        console.log('Movement receive')
+                        console.log(data.message);
+                        switch (data.message) {
+                            case 'W':
+                            var evt = new KeyboardEvent('keydown', {'keyCode':87, 'which':87})
+                            document.dispatchEvent(evt)
+                            // camera.translateZ( -0.5 );
+                                break;
+                            case 'A':
+                            var evt = new KeyboardEvent('keydown', {'keyCode':65, 'which':65})
+                            document.dispatchEvent(evt)
+                            // camera.translateX( -0.5 );
+                                break;
+                            case 'S':
+                            var evt = new KeyboardEvent('keydown', {'keyCode':83, 'which':83})
+                            document.dispatchEvent(evt)
+                            // camera.translateZ( 0.5 );
+                                break;
+                            case 'D':
+                            var evt = new KeyboardEvent('keydown', {'keyCode':68, 'which':68})
+                            document.dispatchEvent(evt)
+                            // camera.translateX( 0.5 );
+                                break;
+                            case 'stop':
+                            var evt = new KeyboardEvent('keyup', {'keyCode':87, 'which':87})
+                            document.dispatchEvent(evt)
+                            var evt = new KeyboardEvent('keyup', {'keyCode':65, 'which':65})
+                            document.dispatchEvent(evt)
+                            var evt = new KeyboardEvent('keyup', {'keyCode':83, 'which':83})
+                            document.dispatchEvent(evt)
+                            var evt = new KeyboardEvent('keyup', {'keyCode':68, 'which':68})
+                            document.dispatchEvent(evt)
+                                break;
+
+                        }
+                    }
+                });
+
+
+        </script>
+
+        <script>
+            console.log('here')
+            // window.onload=function(){
+            //     console.log('ready')
+            //     document.getElementById("my_audio").play();
+            // }            
+        </script>
+    </body>
+</html>
