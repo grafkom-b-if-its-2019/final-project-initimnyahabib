@@ -3,19 +3,19 @@ body{
 }
 button{
     height: 150px;
-    width: 200px;
+    width: 150px;
     position: relative;
 }
 
 
 #W{
     margin-top: 20px;
-    margin-left: 850px;
+    margin-left: 650px;
 }
 
 #A{
     margin-top: 20px;
-    margin-left: 600px;
+    margin-left: 450px;
 }
 
 #S{
@@ -30,7 +30,7 @@ button{
 
 #stop{
     position: absolute;
-    margin-left: 100px;
+    margin-left: 0px;
     height: 150px;
     width: 320px;
     margin-top: 210px;
@@ -38,7 +38,7 @@ button{
 
 #stop-looking{
     position: absolute;
-    margin-left: 100px;
+    margin-left: 0px;
     height: 150px;
     width: 320px;
     margin-top: 40px;
