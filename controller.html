@@ -9,14 +9,17 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
 </head>
 <body>
-    <button onclick="movement('stop_looking')" class="btn btn-secondary btn-lg" id="stop-looking">stop_looking</button>
-    <button onclick="movement('stop')" class="btn btn-secondary btn-lg" id="stop">stop</button>
-    <button onclick="movement('W')" class="btn btn-secondary btn-lg" id="W" >W</button>
+    <div>
+        <button onclick="movement('stop_looking')" class="btn btn-secondary btn-lg" id="stop-looking">stop_looking</button>
+        <button onclick="movement('stop')" class="btn btn-secondary btn-lg" id="stop">stop</button>
+        <button onclick="movement('W')" class="btn btn-secondary btn-lg" id="W" >W</button>
+        
+        <br>
+        <button onclick="movement('A')" class="btn btn-secondary btn-lg" id="A">A</button>
+        <button onclick="movement('S')" class="btn btn-secondary btn-lg" id="S">S</button>
+        <button onclick="movement('D')" class="btn btn-secondary btn-lg" id="D">D</button>
+    </div>
     
-    <br>
-    <button onclick="movement('A')" class="btn btn-secondary btn-lg" id="A">A</button>
-    <button onclick="movement('S')" class="btn btn-secondary btn-lg" id="S">S</button>
-    <button onclick="movement('D')" class="btn btn-secondary btn-lg" id="D">D</button>
 </body>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
