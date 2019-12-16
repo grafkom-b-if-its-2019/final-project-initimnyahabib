@@ -1,0 +1,37 @@
+body{
+    padding-left: 20px;
+}
+button{
+    height: 150px;
+    width: 200px;
+    position: relative;
+}
+
+
+#W{
+    margin-top: 20px;
+    margin-left: 850px;
+}
+
+#A{
+    margin-top: 20px;
+    margin-left: 600px;
+}
+
+#S{
+    margin-top: 20px;
+    margin-left: 45px;
+}
+
+#D{
+    margin-top: 20px;
+    margin-left: 50px;
+}
+
+#stop{
+    position: absolute;
+    margin-left: 100px;
+    height: 320px;
+    width: 320px;
+    margin-top: 20px;
+}
