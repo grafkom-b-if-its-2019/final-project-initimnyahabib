@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <button>
+        A
+    </button>
+</body>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+<script>
+    var controls;
+    var channel;
+    $(document).ready(function(){
+        controls = io.connect("/start_controller");
+        controls.on("connect", function(){
+            controls.emit("register", function(data) {
+                channel = data;
+            })
+        })
+        controls.emit('move', { message: "movement"})
+    })
+</script>
+</html>
